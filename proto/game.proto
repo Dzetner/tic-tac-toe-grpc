@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package battle;
+
+option go_package = "github.com/Dzetner/tic-tac-toe-grpc/proto";
+
+message Move{
+    int32 x = 1;
+    int32 y = 2;
+}
+
+message PlayerAction{
+    oneof action{
+        string join = 1;
+        Move move = 2;
+    }
+}
+
+service GameSerivce{
+    rpc Play(stream PlayerAction) returns (stream ServerResponse);
+}
+
+message ServerResponse{
+    oneof response{
+        string waitForSecond = 1;
+        string gameStart = 2;
+        Board board = 3;
+        string gameOver = 4;
+    }
+}
+
+message Board{
+    repeated string rows = 1;
+    string turn = 2;
+}
