@@ -36,12 +36,11 @@ func main() {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		log.Fatalf("Can`t listen to server:%v\n", err)
+		log.Fatalf("Can't connect to server: %v\n", err)
 	}
 	defer conn.Close()
 
 	c := pb.NewGameSerivceClient(conn)
-
 	ctx := context.Background()
 
 	stream, err := c.Play(ctx)
@@ -49,12 +48,20 @@ func main() {
 		log.Fatal(err)
 	}
 
+	var name string
+	fmt.Println("Введите ваше имя:")
+	fmt.Scan(&name)
+
 	if err := stream.Send(&pb.PlayerAction{
 		Action: &pb.PlayerAction_Join{
-			Join: "Andrey"},
+			Join: name,
+		},
 	}); err != nil {
 		log.Fatal(err)
 	}
+
+	var yourPlayer int32 = 0
+	needMove := false
 
 	for {
 		resp, err := stream.Recv()
@@ -65,10 +72,17 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		switch x := resp.Response.(type) {
+		case *pb.ServerResponse_Init:
+			yourPlayer = x.Init.YourPlayer
+			fmt.Println("Ты Игрок", yourPlayer)
+
 		case *pb.ServerResponse_Board:
 			matrix := x.Board.Rows
 			turn := x.Board.Turn
+			current := x.Board.CurrentPlayer
+
 			fmt.Println(turn)
 			for i := 0; i < 3; i++ {
 				for j := 0; j < 3; j++ {
@@ -77,25 +91,33 @@ func main() {
 				fmt.Println()
 			}
 
+			if yourPlayer != 0 && yourPlayer == current {
+				needMove = true
+			} else {
+				needMove = false
+			}
+
 		case *pb.ServerResponse_WaitForSecond:
-			ans := x.WaitForSecond
-			fmt.Println(ans)
+			fmt.Println(x.WaitForSecond)
+			needMove = false
+
 		case *pb.ServerResponse_GameOver:
 			fmt.Println(x.GameOver)
 			return
 		}
 
-		xMove, yMove := readMove()
-		if err := stream.Send(&pb.PlayerAction{
-			Action: &pb.PlayerAction_Move{
-				Move: &pb.Move{
-					X: xMove,
-					Y: yMove,
+		if needMove {
+			xMove, yMove := readMove()
+			if err := stream.Send(&pb.PlayerAction{
+				Action: &pb.PlayerAction_Move{
+					Move: &pb.Move{
+						X: xMove,
+						Y: yMove,
+					},
 				},
-			},
-		}); err != nil {
-			log.Fatal(err)
+			}); err != nil {
+				log.Fatal(err)
+			}
 		}
-
 	}
 }

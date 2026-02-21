@@ -20,16 +20,22 @@ service GameSerivce{
     rpc Play(stream PlayerAction) returns (stream ServerResponse);
 }
 
+message InitInfo {
+  int32 your_player = 1; 
+}
+
 message ServerResponse{
     oneof response{
         string waitForSecond = 1;
         string gameStart = 2;
         Board board = 3;
         string gameOver = 4;
+        InitInfo init = 5;
     }
 }
 
-message Board{
-    repeated string rows = 1;
-    string turn = 2;
+message Board {
+  repeated string rows = 1;
+  string turn = 2;          
+  int32 current_player = 3; 
 }

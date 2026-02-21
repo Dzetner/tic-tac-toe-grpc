@@ -13,70 +13,179 @@ import (
 type server struct {
 	pb.UnimplementedGameSerivceServer
 	g *game.Game
+
+	p1 pb.GameSerivce_PlayServer
+	p2 pb.GameSerivce_PlayServer
 }
 
 func (s *server) Play(stream pb.GameSerivce_PlayServer) error {
-	fmt.Println("Play starting..")
+	fmt.Println("Игра началась!")
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
 			return nil
 		}
 		if err != nil {
-			fmt.Printf("Error receiving from stream: %v\n", err)
+			fmt.Printf("error: %v\n", err)
 			return err
 		}
+
 		switch x := req.Action.(type) {
+
 		case *pb.PlayerAction_Join:
-			fmt.Println("Player joined: ", x.Join)
-			stream.Send(&pb.ServerResponse{
-				Response: &pb.ServerResponse_WaitForSecond{
-					WaitForSecond: "Hello. Let`s wait for another player!",
-				},
-			})
-		case *pb.PlayerAction_Move:
-			flag := s.g.MakeMove(int(x.Move.X), int(x.Move.Y))
-			if flag == false {
+			fmt.Println("Присоединился игрок:", x.Join)
+
+			if s.p1 == nil {
+				s.p1 = stream
 				stream.Send(&pb.ServerResponse{
-					Response: &pb.ServerResponse_Board{
-						Board: &pb.Board{
-							Rows: s.g.Board,
-							Turn: fmt.Sprintf("Incorrect turn: (%d,%d)", x.Move.X, x.Move.Y),
-						},
+					Response: &pb.ServerResponse_Init{
+						Init: &pb.InitInfo{YourPlayer: 1},
 					},
 				})
-			} else {
-				winner := s.g.Winner()
-				if winner != 0 || s.g.Draw() {
-					stream.Send(&pb.ServerResponse{
-						Response: &pb.ServerResponse_Board{
-							Board: &pb.Board{
-								Rows: s.g.Board,
-								Turn: "",
-							},
+				stream.Send(&pb.ServerResponse{
+					Response: &pb.ServerResponse_WaitForSecond{
+						WaitForSecond: "Ты Игрок 1 (X). Ждём второго игрока...",
+					},
+				})
+			} else if s.p2 == nil {
+				s.p2 = stream
+				stream.Send(&pb.ServerResponse{
+					Response: &pb.ServerResponse_Init{
+						Init: &pb.InitInfo{YourPlayer: 2},
+					},
+				})
+
+				msg := &pb.ServerResponse{
+					Response: &pb.ServerResponse_Board{
+						Board: &pb.Board{
+							Rows:          s.g.Board,
+							Turn:          "Игра началась. Ход Игрока 1",
+							CurrentPlayer: int32(s.g.Player),
 						},
-					})
-					msg := "Draw. Game Over"
-					if winner != 0 {
-						msg = fmt.Sprintf("Congratulations, Player %d WIN!", winner)
-					}
-					stream.Send(&pb.ServerResponse{
-						Response: &pb.ServerResponse_GameOver{
-							GameOver: msg,
-						},
-					})
-					return nil
+					},
 				}
+				if s.p1 != nil {
+					s.p1.Send(msg)
+				}
+				if s.p2 != nil {
+					s.p2.Send(msg)
+				}
+			} else {
 				stream.Send(&pb.ServerResponse{
-					Response: &pb.ServerResponse_Board{
-						Board: &pb.Board{
-							Rows: s.g.Board,
-							Turn: fmt.Sprintf("Player %d make a move (%d,%d)", s.g.Player, x.Move.X, x.Move.Y),
-						},
+					Response: &pb.ServerResponse_GameOver{
+						GameOver: "Комната занята, тут уже играют два игрока.",
 					},
 				})
-				s.g.NextPlayer()
+				return nil
 			}
+
+		case *pb.PlayerAction_Move:
+			var player int
+			switch stream {
+			case s.p1:
+				player = 1
+			case s.p2:
+				player = 2
+			default:
+				stream.Send(&pb.ServerResponse{
+					Response: &pb.ServerResponse_GameOver{
+						GameOver: "Сначала нужно Join.",
+					},
+				})
+				return nil
+			}
+
+			if player != s.g.Player {
+				resp := &pb.ServerResponse{
+					Response: &pb.ServerResponse_Board{
+						Board: &pb.Board{
+							Rows:          s.g.Board,
+							Turn:          fmt.Sprintf("Сейчас ход игрока %d, подожди.", s.g.Player),
+							CurrentPlayer: int32(s.g.Player),
+						},
+					},
+				}
+				if s.p1 != nil {
+					s.p1.Send(resp)
+				}
+				if s.p2 != nil {
+					s.p2.Send(resp)
+				}
+				continue
+			}
+
+			ok := s.g.MakeMove(int(x.Move.X), int(x.Move.Y))
+			if !ok {
+				resp := &pb.ServerResponse{
+					Response: &pb.ServerResponse_Board{
+						Board: &pb.Board{
+							Rows:          s.g.Board,
+							Turn:          fmt.Sprintf("Некорректный ход: (%d,%d)", x.Move.X, x.Move.Y),
+							CurrentPlayer: int32(s.g.Player),
+						},
+					},
+				}
+				if s.p1 != nil {
+					s.p1.Send(resp)
+				}
+				if s.p2 != nil {
+					s.p2.Send(resp)
+				}
+				continue
+			}
+
+			winner := s.g.Winner()
+			if winner != 0 || s.g.Draw() {
+				boardResp := &pb.ServerResponse{
+					Response: &pb.ServerResponse_Board{
+						Board: &pb.Board{
+							Rows:          s.g.Board,
+							Turn:          "",
+							CurrentPlayer: int32(s.g.Player),
+						},
+					},
+				}
+				if s.p1 != nil {
+					s.p1.Send(boardResp)
+				}
+				if s.p2 != nil {
+					s.p2.Send(boardResp)
+				}
+
+				msg := "Ничья. Игра окончена"
+				if winner != 0 {
+					msg = fmt.Sprintf("Поздравляем, игрок %d победил!", winner)
+				}
+				resp := &pb.ServerResponse{
+					Response: &pb.ServerResponse_GameOver{
+						GameOver: msg,
+					},
+				}
+				if s.p1 != nil {
+					s.p1.Send(resp)
+				}
+				if s.p2 != nil {
+					s.p2.Send(resp)
+				}
+				return nil
+			}
+
+			resp := &pb.ServerResponse{
+				Response: &pb.ServerResponse_Board{
+					Board: &pb.Board{
+						Rows:          s.g.Board,
+						Turn:          fmt.Sprintf("Игрок %d сделал ход", s.g.Player),
+						CurrentPlayer: int32(s.g.Player),
+					},
+				},
+			}
+			if s.p1 != nil {
+				s.p1.Send(resp)
+			}
+			if s.p2 != nil {
+				s.p2.Send(resp)
+			}
+			s.g.NextPlayer()
 		}
 	}
 }
@@ -91,7 +200,7 @@ func main() {
 	pb.RegisterGameSerivceServer(s, &server{
 		g: game.NewGame(),
 	})
-	fmt.Println("Server is running on port 50051...")
+	fmt.Println("Сервер запущен на порту 50051...")
 	if err := s.Serve(lis); err != nil {
 		fmt.Printf("Failed to serve: %v\n", err)
 	}

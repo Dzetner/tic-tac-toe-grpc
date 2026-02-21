@@ -7,12 +7,11 @@
 package proto
 
 import (
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
-
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -156,6 +155,50 @@ func (*PlayerAction_Join) isPlayerAction_Action() {}
 
 func (*PlayerAction_Move) isPlayerAction_Action() {}
 
+type InitInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	YourPlayer    int32                  `protobuf:"varint,1,opt,name=your_player,json=yourPlayer,proto3" json:"your_player,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InitInfo) Reset() {
+	*x = InitInfo{}
+	mi := &file_proto_game_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InitInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InitInfo) ProtoMessage() {}
+
+func (x *InitInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_game_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InitInfo.ProtoReflect.Descriptor instead.
+func (*InitInfo) Descriptor() ([]byte, []int) {
+	return file_proto_game_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *InitInfo) GetYourPlayer() int32 {
+	if x != nil {
+		return x.YourPlayer
+	}
+	return 0
+}
+
 type ServerResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Response:
@@ -164,6 +207,7 @@ type ServerResponse struct {
 	//	*ServerResponse_GameStart
 	//	*ServerResponse_Board
 	//	*ServerResponse_GameOver
+	//	*ServerResponse_Init
 	Response      isServerResponse_Response `protobuf_oneof:"response"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -171,7 +215,7 @@ type ServerResponse struct {
 
 func (x *ServerResponse) Reset() {
 	*x = ServerResponse{}
-	mi := &file_proto_game_proto_msgTypes[2]
+	mi := &file_proto_game_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -183,7 +227,7 @@ func (x *ServerResponse) String() string {
 func (*ServerResponse) ProtoMessage() {}
 
 func (x *ServerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_game_proto_msgTypes[2]
+	mi := &file_proto_game_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -196,7 +240,7 @@ func (x *ServerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerResponse.ProtoReflect.Descriptor instead.
 func (*ServerResponse) Descriptor() ([]byte, []int) {
-	return file_proto_game_proto_rawDescGZIP(), []int{2}
+	return file_proto_game_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ServerResponse) GetResponse() isServerResponse_Response {
@@ -242,6 +286,15 @@ func (x *ServerResponse) GetGameOver() string {
 	return ""
 }
 
+func (x *ServerResponse) GetInit() *InitInfo {
+	if x != nil {
+		if x, ok := x.Response.(*ServerResponse_Init); ok {
+			return x.Init
+		}
+	}
+	return nil
+}
+
 type isServerResponse_Response interface {
 	isServerResponse_Response()
 }
@@ -262,6 +315,10 @@ type ServerResponse_GameOver struct {
 	GameOver string `protobuf:"bytes,4,opt,name=gameOver,proto3,oneof"`
 }
 
+type ServerResponse_Init struct {
+	Init *InitInfo `protobuf:"bytes,5,opt,name=init,proto3,oneof"`
+}
+
 func (*ServerResponse_WaitForSecond) isServerResponse_Response() {}
 
 func (*ServerResponse_GameStart) isServerResponse_Response() {}
@@ -270,17 +327,20 @@ func (*ServerResponse_Board) isServerResponse_Response() {}
 
 func (*ServerResponse_GameOver) isServerResponse_Response() {}
 
+func (*ServerResponse_Init) isServerResponse_Response() {}
+
 type Board struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Rows          []string               `protobuf:"bytes,1,rep,name=rows,proto3" json:"rows,omitempty"`
 	Turn          string                 `protobuf:"bytes,2,opt,name=turn,proto3" json:"turn,omitempty"`
+	CurrentPlayer int32                  `protobuf:"varint,3,opt,name=current_player,json=currentPlayer,proto3" json:"current_player,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Board) Reset() {
 	*x = Board{}
-	mi := &file_proto_game_proto_msgTypes[3]
+	mi := &file_proto_game_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -292,7 +352,7 @@ func (x *Board) String() string {
 func (*Board) ProtoMessage() {}
 
 func (x *Board) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_game_proto_msgTypes[3]
+	mi := &file_proto_game_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -305,7 +365,7 @@ func (x *Board) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Board.ProtoReflect.Descriptor instead.
 func (*Board) Descriptor() ([]byte, []int) {
-	return file_proto_game_proto_rawDescGZIP(), []int{3}
+	return file_proto_game_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Board) GetRows() []string {
@@ -322,6 +382,13 @@ func (x *Board) GetTurn() string {
 	return ""
 }
 
+func (x *Board) GetCurrentPlayer() int32 {
+	if x != nil {
+		return x.CurrentPlayer
+	}
+	return 0
+}
+
 var File_proto_game_proto protoreflect.FileDescriptor
 
 const file_proto_game_proto_rawDesc = "" +
@@ -333,17 +400,22 @@ const file_proto_game_proto_rawDesc = "" +
 	"\fPlayerAction\x12\x14\n" +
 	"\x04join\x18\x01 \x01(\tH\x00R\x04join\x12\"\n" +
 	"\x04move\x18\x02 \x01(\v2\f.battle.MoveH\x00R\x04moveB\b\n" +
-	"\x06action\"\xa9\x01\n" +
+	"\x06action\"+\n" +
+	"\bInitInfo\x12\x1f\n" +
+	"\vyour_player\x18\x01 \x01(\x05R\n" +
+	"yourPlayer\"\xd1\x01\n" +
 	"\x0eServerResponse\x12&\n" +
 	"\rwaitForSecond\x18\x01 \x01(\tH\x00R\rwaitForSecond\x12\x1e\n" +
 	"\tgameStart\x18\x02 \x01(\tH\x00R\tgameStart\x12%\n" +
 	"\x05board\x18\x03 \x01(\v2\r.battle.BoardH\x00R\x05board\x12\x1c\n" +
-	"\bgameOver\x18\x04 \x01(\tH\x00R\bgameOverB\n" +
+	"\bgameOver\x18\x04 \x01(\tH\x00R\bgameOver\x12&\n" +
+	"\x04init\x18\x05 \x01(\v2\x10.battle.InitInfoH\x00R\x04initB\n" +
 	"\n" +
-	"\bresponse\"/\n" +
+	"\bresponse\"V\n" +
 	"\x05Board\x12\x12\n" +
 	"\x04rows\x18\x01 \x03(\tR\x04rows\x12\x12\n" +
-	"\x04turn\x18\x02 \x01(\tR\x04turn2G\n" +
+	"\x04turn\x18\x02 \x01(\tR\x04turn\x12%\n" +
+	"\x0ecurrent_player\x18\x03 \x01(\x05R\rcurrentPlayer2G\n" +
 	"\vGameSerivce\x128\n" +
 	"\x04Play\x12\x14.battle.PlayerAction\x1a\x16.battle.ServerResponse(\x010\x01B+Z)github.com/Dzetner/tic-tac-toe-grpc/protob\x06proto3"
 
@@ -359,23 +431,25 @@ func file_proto_game_proto_rawDescGZIP() []byte {
 	return file_proto_game_proto_rawDescData
 }
 
-var file_proto_game_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_proto_game_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_proto_game_proto_goTypes = []any{
 	(*Move)(nil),           // 0: battle.Move
 	(*PlayerAction)(nil),   // 1: battle.PlayerAction
-	(*ServerResponse)(nil), // 2: battle.ServerResponse
-	(*Board)(nil),          // 3: battle.Board
+	(*InitInfo)(nil),       // 2: battle.InitInfo
+	(*ServerResponse)(nil), // 3: battle.ServerResponse
+	(*Board)(nil),          // 4: battle.Board
 }
 var file_proto_game_proto_depIdxs = []int32{
 	0, // 0: battle.PlayerAction.move:type_name -> battle.Move
-	3, // 1: battle.ServerResponse.board:type_name -> battle.Board
-	1, // 2: battle.GameSerivce.Play:input_type -> battle.PlayerAction
-	2, // 3: battle.GameSerivce.Play:output_type -> battle.ServerResponse
-	3, // [3:4] is the sub-list for method output_type
-	2, // [2:3] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	4, // 1: battle.ServerResponse.board:type_name -> battle.Board
+	2, // 2: battle.ServerResponse.init:type_name -> battle.InitInfo
+	1, // 3: battle.GameSerivce.Play:input_type -> battle.PlayerAction
+	3, // 4: battle.GameSerivce.Play:output_type -> battle.ServerResponse
+	4, // [4:5] is the sub-list for method output_type
+	3, // [3:4] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_proto_game_proto_init() }
@@ -387,11 +461,12 @@ func file_proto_game_proto_init() {
 		(*PlayerAction_Join)(nil),
 		(*PlayerAction_Move)(nil),
 	}
-	file_proto_game_proto_msgTypes[2].OneofWrappers = []any{
+	file_proto_game_proto_msgTypes[3].OneofWrappers = []any{
 		(*ServerResponse_WaitForSecond)(nil),
 		(*ServerResponse_GameStart)(nil),
 		(*ServerResponse_Board)(nil),
 		(*ServerResponse_GameOver)(nil),
+		(*ServerResponse_Init)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -399,7 +474,7 @@ func file_proto_game_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_game_proto_rawDesc), len(file_proto_game_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
