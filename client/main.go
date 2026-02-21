@@ -11,6 +11,25 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+func readMove() (int32, int32) {
+	for {
+		var xMove, yMove int32
+		fmt.Println("Введите ваш ход: два числа от 0 до 2, через пробел:")
+		n, err := fmt.Scan(&xMove, &yMove)
+		if err != nil || n != 2 {
+			fmt.Println("Некорректный ввод, попробуйте ещё раз.")
+			var dump string
+			fmt.Scanln(&dump)
+			continue
+		}
+		if xMove < 0 || xMove > 2 || yMove < 0 || yMove > 2 {
+			fmt.Println("Координаты должны быть от 0 до 2. Попробуйте ещё раз.")
+			continue
+		}
+		return xMove, yMove
+	}
+}
+
 func main() {
 	conn, err := grpc.NewClient(
 		"localhost:50051",
@@ -66,17 +85,17 @@ func main() {
 			return
 		}
 
-		var xMove, yMove int32
-		fmt.Println("Введите ваш ход")
-		fmt.Scan(&xMove, &yMove)
-		stream.Send(&pb.PlayerAction{
+		xMove, yMove := readMove()
+		if err := stream.Send(&pb.PlayerAction{
 			Action: &pb.PlayerAction_Move{
 				Move: &pb.Move{
 					X: xMove,
 					Y: yMove,
 				},
 			},
-		})
+		}); err != nil {
+			log.Fatal(err)
+		}
 
 	}
 }
