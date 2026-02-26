@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync"
 
 	"github.com/Dzetner/tic-tac-toe-grpc/game"
 	pb "github.com/Dzetner/tic-tac-toe-grpc/proto"
@@ -12,7 +13,8 @@ import (
 
 type server struct {
 	pb.UnimplementedGameSerivceServer
-	g *game.Game
+	mu sync.Mutex
+	g  *game.Game
 
 	p1 pb.GameSerivce_PlayServer
 	p2 pb.GameSerivce_PlayServer
@@ -30,6 +32,7 @@ func (s *server) Play(stream pb.GameSerivce_PlayServer) error {
 			return err
 		}
 
+		s.mu.Lock()
 		switch x := req.Action.(type) {
 
 		case *pb.PlayerAction_Join:
@@ -37,19 +40,19 @@ func (s *server) Play(stream pb.GameSerivce_PlayServer) error {
 
 			if s.p1 == nil {
 				s.p1 = stream
-				stream.Send(&pb.ServerResponse{
+				_ = stream.Send(&pb.ServerResponse{
 					Response: &pb.ServerResponse_Init{
 						Init: &pb.InitInfo{YourPlayer: 1},
 					},
 				})
-				stream.Send(&pb.ServerResponse{
+				_ = stream.Send(&pb.ServerResponse{
 					Response: &pb.ServerResponse_WaitForSecond{
 						WaitForSecond: "Ты Игрок 1 (X). Ждём второго игрока...",
 					},
 				})
 			} else if s.p2 == nil {
 				s.p2 = stream
-				stream.Send(&pb.ServerResponse{
+				_ = stream.Send(&pb.ServerResponse{
 					Response: &pb.ServerResponse_Init{
 						Init: &pb.InitInfo{YourPlayer: 2},
 					},
@@ -65,17 +68,18 @@ func (s *server) Play(stream pb.GameSerivce_PlayServer) error {
 					},
 				}
 				if s.p1 != nil {
-					s.p1.Send(msg)
+					_ = s.p1.Send(msg)
 				}
 				if s.p2 != nil {
-					s.p2.Send(msg)
+					_ = s.p2.Send(msg)
 				}
 			} else {
-				stream.Send(&pb.ServerResponse{
+				_ = stream.Send(&pb.ServerResponse{
 					Response: &pb.ServerResponse_GameOver{
 						GameOver: "Комната занята, тут уже играют два игрока.",
 					},
 				})
+				s.mu.Unlock()
 				return nil
 			}
 
@@ -87,11 +91,12 @@ func (s *server) Play(stream pb.GameSerivce_PlayServer) error {
 			case s.p2:
 				player = 2
 			default:
-				stream.Send(&pb.ServerResponse{
+				_ = stream.Send(&pb.ServerResponse{
 					Response: &pb.ServerResponse_GameOver{
 						GameOver: "Сначала нужно Join.",
 					},
 				})
+				s.mu.Unlock()
 				return nil
 			}
 
@@ -106,11 +111,12 @@ func (s *server) Play(stream pb.GameSerivce_PlayServer) error {
 					},
 				}
 				if s.p1 != nil {
-					s.p1.Send(resp)
+					_ = s.p1.Send(resp)
 				}
 				if s.p2 != nil {
-					s.p2.Send(resp)
+					_ = s.p2.Send(resp)
 				}
+				s.mu.Unlock()
 				continue
 			}
 
@@ -126,30 +132,32 @@ func (s *server) Play(stream pb.GameSerivce_PlayServer) error {
 					},
 				}
 				if s.p1 != nil {
-					s.p1.Send(resp)
+					_ = s.p1.Send(resp)
 				}
 				if s.p2 != nil {
-					s.p2.Send(resp)
+					_ = s.p2.Send(resp)
 				}
+				s.mu.Unlock()
 				continue
 			}
 
 			winner := s.g.Winner()
-			if winner != 0 || s.g.Draw() {
+			isDraw := s.g.Draw()
+			if winner != 0 || isDraw {
 				boardResp := &pb.ServerResponse{
 					Response: &pb.ServerResponse_Board{
 						Board: &pb.Board{
 							Rows:          s.g.Board,
 							Turn:          "",
-							CurrentPlayer: int32(s.g.Player),
+							CurrentPlayer: int32(s.g.Player), // не важно, игра уже окончена
 						},
 					},
 				}
 				if s.p1 != nil {
-					s.p1.Send(boardResp)
+					_ = s.p1.Send(boardResp)
 				}
 				if s.p2 != nil {
-					s.p2.Send(boardResp)
+					_ = s.p2.Send(boardResp)
 				}
 
 				msg := "Ничья. Игра окончена"
@@ -162,31 +170,35 @@ func (s *server) Play(stream pb.GameSerivce_PlayServer) error {
 					},
 				}
 				if s.p1 != nil {
-					s.p1.Send(resp)
+					_ = s.p1.Send(resp)
 				}
 				if s.p2 != nil {
-					s.p2.Send(resp)
+					_ = s.p2.Send(resp)
 				}
+				s.mu.Unlock()
 				return nil
 			}
+
+			// Переходим к следующему игроку и рассылаем актуальное состояние.
+			s.g.NextPlayer()
 
 			resp := &pb.ServerResponse{
 				Response: &pb.ServerResponse_Board{
 					Board: &pb.Board{
 						Rows:          s.g.Board,
-						Turn:          fmt.Sprintf("Игрок %d сделал ход", s.g.Player),
+						Turn:          fmt.Sprintf("Игрок %d сделал ход, теперь ход игрока %d", player, s.g.Player),
 						CurrentPlayer: int32(s.g.Player),
 					},
 				},
 			}
 			if s.p1 != nil {
-				s.p1.Send(resp)
+				_ = s.p1.Send(resp)
 			}
 			if s.p2 != nil {
-				s.p2.Send(resp)
+				_ = s.p2.Send(resp)
 			}
-			s.g.NextPlayer()
 		}
+		s.mu.Unlock()
 	}
 }
 

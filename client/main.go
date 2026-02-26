@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"time"
 
 	pb "github.com/Dzetner/tic-tac-toe-grpc/proto"
 	"google.golang.org/grpc"
@@ -14,7 +15,7 @@ import (
 func readMove() (int32, int32) {
 	for {
 		var xMove, yMove int32
-		fmt.Println("Введите ваш ход: два числа от 0 до 2, через пробел:")
+		fmt.Println("Введите ваш ход: два числа от 0 до 2 (строка и столбец), через пробел:")
 		n, err := fmt.Scan(&xMove, &yMove)
 		if err != nil || n != 2 {
 			fmt.Println("Некорректный ввод, попробуйте ещё раз.")
@@ -31,19 +32,23 @@ func readMove() (int32, int32) {
 }
 
 func main() {
-	conn, err := grpc.NewClient(
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	conn, err := grpc.DialContext(
+		ctx,
 		"localhost:50051",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
 	)
 	if err != nil {
-		log.Fatalf("Can't connect to server: %v\n", err)
+		log.Fatalf("can't connect to server: %v\n", err)
 	}
 	defer conn.Close()
 
 	c := pb.NewGameSerivceClient(conn)
-	ctx := context.Background()
 
-	stream, err := c.Play(ctx)
+	stream, err := c.Play(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -83,12 +88,21 @@ func main() {
 			turn := x.Board.Turn
 			current := x.Board.CurrentPlayer
 
-			fmt.Println(turn)
+			fmt.Println()
+			fmt.Println("   0 1 2")
 			for i := 0; i < 3; i++ {
+				fmt.Printf("%d  ", i)
 				for j := 0; j < 3; j++ {
-					fmt.Printf("%s ", matrix[3*i+j])
+					cell := matrix[3*i+j]
+					if cell == "#" {
+						cell = "."
+					}
+					fmt.Printf("%s ", cell)
 				}
 				fmt.Println()
+			}
+			if turn != "" {
+				fmt.Println(turn)
 			}
 
 			if yourPlayer != 0 && yourPlayer == current {

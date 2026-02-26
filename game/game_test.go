@@ -16,24 +16,38 @@ func TestGame_MakeMove(t *testing.T) {
 		want        bool
 	}{
 		{
-			name:        "valid",
+			name:        "valid center (0-based)",
 			prepareMove: false,
 			x:           1,
 			y:           1,
 			want:        true,
 		},
 		{
-			name:        "invalid x",
+			name:        "invalid x < 0",
 			prepareMove: false,
-			x:           0,
+			x:           -1,
 			y:           1,
 			want:        false,
 		},
 		{
-			name:        "invalid y",
+			name:        "invalid y < 0",
 			prepareMove: false,
 			x:           1,
-			y:           0,
+			y:           -1,
+			want:        false,
+		},
+		{
+			name:        "invalid x > 2",
+			prepareMove: false,
+			x:           3,
+			y:           1,
+			want:        false,
+		},
+		{
+			name:        "invalid y > 2",
+			prepareMove: false,
+			x:           1,
+			y:           3,
 			want:        false,
 		},
 		{
@@ -104,14 +118,22 @@ func TestGame_Draw(t *testing.T) {
 		want  bool
 	}{
 		{
-			name:  "true",
-			board: []string{"X", "O", "X", "X", "O", "X", "O", "O"},
-			want:  true,
+			name: "true full 3x3",
+			board: []string{
+				"X", "O", "X",
+				"X", "O", "X",
+				"O", "X", "O",
+			},
+			want: true,
 		},
 		{
-			name:  "false",
-			board: []string{"X", "O", "X", "X", "O", "X", "O", "#"},
-			want:  false,
+			name: "false has empty",
+			board: []string{
+				"X", "O", "X",
+				"X", "#", "X",
+				"O", "X", "O",
+			},
+			want: false,
 		},
 		{
 			name:  "nil-board",

@@ -19,9 +19,9 @@ func NewGame() *Game {
 	}
 }
 
+// MakeMove делает ход игрока по координатам x, y в диапазоне [0..2].
+// Возвращает true, если ход корректен.
 func (g *Game) MakeMove(x, y int) bool {
-	x--
-	y--
 	switch {
 	case x < 0 || y < 0:
 		return false
